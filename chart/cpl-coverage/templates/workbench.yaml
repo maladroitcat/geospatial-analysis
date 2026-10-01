@@ -14,6 +14,25 @@ metadata:
 spec:
   template:
     spec:
+      initContainers:
+        - name: git-sync
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              if [ ! -f /opt/app-root/src/cleaning_pipeline.ipynb ]; then
+                cd /tmp
+                git clone --depth 1 --branch {{ .Values.git.ref }} {{ .Values.git.repoURL }} repo
+                cp repo/notebooks/pipelines/cleaning_pipeline.ipynb /opt/app-root/src/
+                rm -rf repo
+                echo "Notebook synced from git."
+              else
+                echo "Notebook already exists, skipping."
+              fi
+          volumeMounts:
+            - name: workspace
+              mountPath: /opt/app-root/src
       containers:
         - name: pipelines
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
