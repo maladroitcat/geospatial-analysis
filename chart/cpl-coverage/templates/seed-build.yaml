@@ -1,0 +1,31 @@
+{{- if .Values.seed.enabled }}
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: cpl-seed
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: cpl-seed
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+spec:
+  source:
+    type: Git
+    git:
+      uri: {{ .Values.git.repoURL }}
+      ref: {{ .Values.git.ref }}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile.seed
+  output:
+    to:
+      kind: ImageStreamTag
+      name: cpl-seed:latest
+  triggers:
+    - type: ConfigChange
+{{- end }}

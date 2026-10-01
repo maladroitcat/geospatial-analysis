@@ -1,0 +1,58 @@
+{{- if .Values.seed.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-seed-data
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "cpl-coverage.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: image-registry.openshift-image-registry.svc:5000/{{ .Values.namespace }}/cpl-seed:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              aws --endpoint-url https://${BUCKET_HOST}:${BUCKET_PORT} \
+                --no-verify-ssl \
+                s3 ls s3://{{ .Values.s3.bucketName }}/raw/ 2>/dev/null && \
+                echo "Data already seeded, skipping." && exit 0
+
+              echo "Seeding raw data to s3://{{ .Values.s3.bucketName }}/raw/ ..."
+              aws --endpoint-url https://${BUCKET_HOST}:${BUCKET_PORT} \
+                --no-verify-ssl \
+                s3 sync /data/raw/ s3://{{ .Values.s3.bucketName }}/raw/
+              echo "Seed complete."
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.bucketName }}
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.s3.bucketName }}
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: BUCKET_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.s3.bucketName }}
+                  key: BUCKET_HOST
+            - name: BUCKET_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.s3.bucketName }}
+                  key: BUCKET_PORT
+{{- end }}

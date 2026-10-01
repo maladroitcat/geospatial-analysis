@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: geospatial-analysis-cpl
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/maladroitcat/geospatial-analysis.git
+    targetRevision: geospatial_analysis
+    path: chart/cpl-coverage
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cpl-coverage
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

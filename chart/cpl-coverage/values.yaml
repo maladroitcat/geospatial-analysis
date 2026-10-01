@@ -1,0 +1,19 @@
+namespace: cpl-coverage
+
+git:
+  repoURL: https://github.com/maladroitcat/geospatial-analysis.git
+  ref: geospatial_analysis
+
+s3:
+  bucketName: cpl-data
+  bucketClass: noobaa-default-bucket-class
+
+seed:
+  enabled: true
+
+pipeline:
+  image: image-registry.openshift-image-registry.svc:5000/cpl-coverage/cpl-pipeline:latest
+
+secrets:
+  mapboxToken: ""
+  censusApiKey: ""
