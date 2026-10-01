@@ -30,7 +30,7 @@ spec:
               protocol: TCP
           env:
             - name: NOTEBOOK_ARGS
-              value: --NotebookApp.token='' --NotebookApp.password='' --ServerApp.port=8888
+              value: "--NotebookApp.token='' --NotebookApp.password='' --ServerApp.port=8888 --ServerApp.base_url=/notebook/{{ .Values.namespace }}/pipelines"
           envFrom:
             - secretRef:
                 name: cpl-s3
@@ -41,27 +41,6 @@ spec:
         - name: workspace
           persistentVolumeClaim:
             claimName: pipelines-pvc
----
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: pipelines
-  labels:
-    {{- include "cpl-coverage.labels" . | nindent 4 }}
-    notebook-name: pipelines
-  annotations:
-    haproxy.router.openshift.io/rewrite-target: /
-spec:
-  to:
-    kind: Service
-    name: pipelines-kube-rbac-proxy
-    weight: 100
-  port:
-    targetPort: kube-rbac-proxy
-  tls:
-    termination: reencrypt
-    insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
