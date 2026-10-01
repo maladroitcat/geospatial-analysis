@@ -42,6 +42,27 @@ spec:
           persistentVolumeClaim:
             claimName: pipelines-pvc
 ---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: pipelines
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+    notebook-name: pipelines
+  annotations:
+    haproxy.router.openshift.io/rewrite-target: /
+spec:
+  to:
+    kind: Service
+    name: pipelines-kube-rbac-proxy
+    weight: 100
+  port:
+    targetPort: kube-rbac-proxy
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
