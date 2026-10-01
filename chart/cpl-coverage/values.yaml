@@ -6,7 +6,7 @@ git:
 
 s3:
   bucketName: cpl-data
-  bucketClass: noobaa-default-bucket-class
+  bucketClass: openshift-storage.noobaa.io
 
 seed:
   enabled: true
