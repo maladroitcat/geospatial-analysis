@@ -4,6 +4,8 @@ metadata:
   name: {{ .Values.s3.bucketName }}
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   bucketName: {{ .Values.s3.bucketName }}
   storageClassName: {{ .Values.s3.bucketClass }}

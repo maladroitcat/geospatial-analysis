@@ -11,9 +11,6 @@ s3:
 seed:
   enabled: true
 
-pipeline:
-  image: image-registry.openshift-image-registry.svc:5000/cpl-coverage/cpl-pipeline:latest
-
 secrets:
   mapboxToken: ""
   censusApiKey: ""

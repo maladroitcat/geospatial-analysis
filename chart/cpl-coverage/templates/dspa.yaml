@@ -4,6 +4,8 @@ metadata:
   name: dspa
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
 spec:
   dspVersion: v2
   apiServer:

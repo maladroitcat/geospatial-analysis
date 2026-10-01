@@ -11,24 +11,26 @@ metadata:
     notebooks.opendatahub.io/inject-oauth: "true"
     notebooks.opendatahub.io/oauth-logout-url: ""
     openshift.io/display-name: pipelines
+    argocd.argoproj.io/sync-wave: "40"
 spec:
   template:
     spec:
       initContainers:
-        - name: notebook-sync
-          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+        - name: copy-notebooks
+          image: registry.access.redhat.com/ubi9/python-312
           command:
-            - /bin/sh
+            - /bin/bash
             - -c
             - |
               if [ ! -f /opt/app-root/src/cleaning_pipeline.ipynb ]; then
-                curl -sL -o /opt/app-root/src/cleaning_pipeline.ipynb \
-                  "https://raw.githubusercontent.com/maladroitcat/geospatial-analysis/{{ .Values.git.ref }}/notebooks/pipelines/cleaning_pipeline.ipynb"
-                echo "Notebook downloaded from GitHub."
+                cp /notebooks/cleaning_pipeline.ipynb /opt/app-root/src/
+                echo "Notebooks copied."
               else
-                echo "Notebook already exists, skipping."
+                echo "Notebooks already exist, skipping."
               fi
           volumeMounts:
+            - name: notebooks
+              mountPath: /notebooks
             - name: workspace
               mountPath: /opt/app-root/src
       containers:
@@ -51,6 +53,9 @@ spec:
           envFrom:
             - secretRef:
                 name: cpl-s3
+            - secretRef:
+                name: pipeline-url
+                optional: true
           volumeMounts:
             - name: workspace
               mountPath: /opt/app-root/src
@@ -58,6 +63,9 @@ spec:
         - name: workspace
           persistentVolumeClaim:
             claimName: pipelines-pvc
+        - name: notebooks
+          configMap:
+            name: notebook-files
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -65,6 +73,8 @@ metadata:
   name: pipelines-pvc
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes:
     - ReadWriteOnce

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notebook-files
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  cleaning_pipeline.ipynb: |-
+    {{ .Files.Get "files/cleaning_pipeline.ipynb" | nindent 4 }}
