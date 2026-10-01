@@ -15,18 +15,16 @@ spec:
   template:
     spec:
       initContainers:
-        - name: git-sync
+        - name: notebook-sync
           image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
           command:
             - /bin/sh
             - -c
             - |
               if [ ! -f /opt/app-root/src/cleaning_pipeline.ipynb ]; then
-                cd /tmp
-                git clone --depth 1 --branch {{ .Values.git.ref }} {{ .Values.git.repoURL }} repo
-                cp repo/notebooks/pipelines/cleaning_pipeline.ipynb /opt/app-root/src/
-                rm -rf repo
-                echo "Notebook synced from git."
+                curl -sL -o /opt/app-root/src/cleaning_pipeline.ipynb \
+                  "https://raw.githubusercontent.com/maladroitcat/geospatial-analysis/{{ .Values.git.ref }}/notebooks/pipelines/cleaning_pipeline.ipynb"
+                echo "Notebook downloaded from GitHub."
               else
                 echo "Notebook already exists, skipping."
               fi
