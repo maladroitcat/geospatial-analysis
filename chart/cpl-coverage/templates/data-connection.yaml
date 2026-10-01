@@ -1,0 +1,82 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-create-data-connection
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "cpl-coverage.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: data-connection-creator
+      containers:
+        - name: create
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              ACCESS_KEY=$(oc get secret {{ .Values.s3.bucketName }} -o jsonpath='{.data.AWS_ACCESS_KEY_ID}')
+              SECRET_KEY=$(oc get secret {{ .Values.s3.bucketName }} -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}')
+
+              cat <<EOSECRET | oc apply -f -
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: cpl-s3
+                labels:
+                  opendatahub.io/dashboard: "true"
+                  opendatahub.io/managed: "true"
+                annotations:
+                  opendatahub.io/connection-type: s3
+                  openshift.io/display-name: CPL Data
+              type: Opaque
+              data:
+                AWS_ACCESS_KEY_ID: ${ACCESS_KEY}
+                AWS_SECRET_ACCESS_KEY: ${SECRET_KEY}
+              stringData:
+                AWS_S3_ENDPOINT: https://s3.openshift-storage.svc:443
+                AWS_S3_BUCKET: {{ .Values.s3.bucketName }}
+                AWS_DEFAULT_REGION: us-east-1
+              EOSECRET
+              echo "Data connection cpl-s3 created."
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: data-connection-creator
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: data-connection-creator
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: data-connection-creator
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: data-connection-creator
+subjects:
+  - kind: ServiceAccount
+    name: data-connection-creator

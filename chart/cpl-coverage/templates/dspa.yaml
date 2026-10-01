@@ -1,0 +1,34 @@
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+spec:
+  dspVersion: v2
+  apiServer:
+    deploy: true
+    enableOauth: true
+    enableSamplePipeline: false
+    cacheEnabled: true
+    artifactSignedURLExpirySeconds: 60
+  database:
+    disableHealthCheck: false
+    mariaDB:
+      deploy: true
+      pipelineDBName: mlpipeline
+      pvcSize: 10Gi
+      username: mlpipeline
+  objectStorage:
+    disableHealthCheck: false
+    enableExternalRoute: false
+    externalStorage:
+      bucket: {{ .Values.s3.bucketName }}
+      host: s3.openshift-storage.svc
+      port: "443"
+      scheme: https
+      region: us-east-1
+      s3CredentialsSecret:
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY
+        secretName: {{ .Values.s3.bucketName }}
