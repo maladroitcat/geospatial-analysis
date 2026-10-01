@@ -5,7 +5,7 @@ git:
   ref: geospatial_analysis
 
 s3:
-  bucketName: cpl-data
+  bucketName: cpl-coverage-data
   bucketClass: openshift-storage.noobaa.io
 
 seed:
