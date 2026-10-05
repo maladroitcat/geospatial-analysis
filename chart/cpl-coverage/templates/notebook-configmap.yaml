@@ -9,3 +9,9 @@ metadata:
 data:
   cleaning_pipeline.ipynb: |-
     {{ .Files.Get "files/cleaning_pipeline.ipynb" | nindent 4 }}
+  fetch_isochrones.ipynb: |-
+    {{ .Files.Get "files/fetch_isochrones.ipynb" | nindent 4 }}
+  compute_coverage.ipynb: |-
+    {{ .Files.Get "files/compute_coverage.ipynb" | nindent 4 }}
+  aggregate_scores.ipynb: |-
+    {{ .Files.Get "files/aggregate_scores.ipynb" | nindent 4 }}

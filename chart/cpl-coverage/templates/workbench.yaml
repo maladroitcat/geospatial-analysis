@@ -22,12 +22,14 @@ spec:
             - /bin/bash
             - -c
             - |
-              if [ ! -f /opt/app-root/src/cleaning_pipeline.ipynb ]; then
-                cp /notebooks/cleaning_pipeline.ipynb /opt/app-root/src/
-                echo "Notebooks copied."
-              else
-                echo "Notebooks already exist, skipping."
-              fi
+              for nb in cleaning_pipeline.ipynb fetch_isochrones.ipynb compute_coverage.ipynb aggregate_scores.ipynb; do
+                if [ ! -f /opt/app-root/src/$nb ]; then
+                  cp /notebooks/$nb /opt/app-root/src/
+                  echo "Copied $nb"
+                else
+                  echo "$nb already exists, skipping."
+                fi
+              done
           volumeMounts:
             - name: notebooks
               mountPath: /notebooks

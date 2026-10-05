@@ -1,0 +1,12 @@
+apiVersion: feast.dev/v1
+kind: FeatureStore
+metadata:
+  name: cpl-features
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  feastProject: cpl_coverage
+  authz:
+    noAuth: true
