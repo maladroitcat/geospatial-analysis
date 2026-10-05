@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-enable-feast
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "cpl-coverage.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: feast-enabler
+      containers:
+        - name: enable-feast
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              CURRENT=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.feastoperator.managementState}')
+              if [ "$CURRENT" = "Managed" ]; then
+                echo "Feast operator already enabled."
+                exit 0
+              fi
+              oc patch datasciencecluster default-dsc --type merge -p '{"spec":{"components":{"feastoperator":{"managementState":"Managed"}}}}'
+              echo "Feast operator enabled."
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: feast-enabler
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-feast-enabler
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["datasciencecluster.opendatahub.io"]
+    resources: ["datascienceclusters"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-feast-enabler
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "cpl-coverage.name" . }}-feast-enabler
+subjects:
+  - kind: ServiceAccount
+    name: feast-enabler
+    namespace: {{ .Values.namespace }}
