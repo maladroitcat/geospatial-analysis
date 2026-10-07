@@ -8,5 +8,14 @@ metadata:
     argocd.argoproj.io/sync-wave: "25"
 spec:
   feastProject: cpl_coverage
+  feastProjectDir:
+    git:
+      url: {{ .Values.git.repoURL }}
+      ref: {{ .Values.git.ref }}
+      featureRepoPath: feast
+  services:
+    registry:
+      local:
+        server: {}
   authz:
     noAuth: true

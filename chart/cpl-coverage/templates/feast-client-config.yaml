@@ -16,7 +16,7 @@ data:
         cert: /etc/pki/tls/custom-certs/service-ca.crt
     registry:
         registry_type: remote
-        path: feast-cpl-features-online.{{ .Values.namespace }}.svc.cluster.local:443
+        path: feast-cpl-features-registry.{{ .Values.namespace }}.svc.cluster.local:443
         cert: /etc/pki/tls/custom-certs/service-ca.crt
     auth:
         type: no_auth
