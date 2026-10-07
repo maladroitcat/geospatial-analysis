@@ -5,10 +5,11 @@ metadata:
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "20"
 spec:
   accessModes:
     - ReadWriteOnce
+  volumeMode: Filesystem
   resources:
     requests:
       storage: 5Gi
