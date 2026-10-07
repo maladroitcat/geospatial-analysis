@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feast-client-config
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "26"
+data:
+  feature_store.yaml: |
+    project: cpl_coverage
+    provider: local
+    online_store:
+        path: https://feast-cpl-features-online.{{ .Values.namespace }}.svc.cluster.local:443
+        type: remote
+        cert: /etc/pki/tls/custom-certs/service-ca.crt
+    registry:
+        registry_type: remote
+        path: feast-cpl-features-online.{{ .Values.namespace }}.svc.cluster.local:443
+        cert: /etc/pki/tls/custom-certs/service-ca.crt
+    auth:
+        type: no_auth
+    entity_key_serialization_version: 3
