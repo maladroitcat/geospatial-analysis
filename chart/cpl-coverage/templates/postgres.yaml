@@ -24,9 +24,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 type: Opaque
 stringData:
-  POSTGRES_USER: feast
-  POSTGRES_PASSWORD: feast
-  POSTGRES_DB: feast
+  POSTGRESQL_USER: feast
+  POSTGRESQL_PASSWORD: feast
+  POSTGRESQL_DATABASE: feast
 ---
 apiVersion: v1
 kind: Secret
@@ -41,12 +41,12 @@ stringData:
   postgres: |
     host: feast-postgres.{{ .Values.namespace }}.svc.cluster.local
     port: 5432
-    database: ${POSTGRES_DB}
+    database: ${POSTGRESQL_DATABASE}
     db_schema: public
-    user: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    user: ${POSTGRESQL_USER}
+    password: ${POSTGRESQL_PASSWORD}
   sql: |
-    path: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@feast-postgres.{{ .Values.namespace }}.svc.cluster.local:5432/${POSTGRES_DB}
+    path: postgresql+psycopg://${POSTGRESQL_USER}:${POSTGRESQL_PASSWORD}@feast-postgres.{{ .Values.namespace }}.svc.cluster.local:5432/${POSTGRESQL_DATABASE}
     cache_ttl_seconds: 60
     sqlalchemy_config_kwargs:
       echo: false
