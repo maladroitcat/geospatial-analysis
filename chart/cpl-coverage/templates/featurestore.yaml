@@ -17,7 +17,8 @@ spec:
   services:
     registry:
       local:
-        server: {}
+        server:
+          restAPI: true
     ui: {}
   authz:
     noAuth: true
