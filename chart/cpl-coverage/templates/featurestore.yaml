@@ -17,5 +17,6 @@ spec:
     registry:
       local:
         server: {}
+    ui: {}
   authz:
     noAuth: true
