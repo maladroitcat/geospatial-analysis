@@ -4,6 +4,7 @@ metadata:
   name: cpl-features
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
+    opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "25"
 spec:
