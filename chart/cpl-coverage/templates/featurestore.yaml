@@ -15,10 +15,28 @@ spec:
       ref: {{ .Values.git.ref }}
       featureRepoPath: feast
   services:
+    onlineStore:
+      persistence:
+        store:
+          type: postgres
+          secretRef:
+            name: feast-data-stores
+      server:
+        envFrom:
+          - secretRef:
+              name: postgres-secret
     registry:
       local:
+        persistence:
+          store:
+            type: sql
+            secretRef:
+              name: feast-data-stores
         server:
           restAPI: true
+          envFrom:
+            - secretRef:
+                name: postgres-secret
     ui: {}
   authz:
     noAuth: true

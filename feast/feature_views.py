@@ -1,20 +1,10 @@
 from datetime import timedelta
 
-from feast import Entity, FeatureView, Field, FileSource
-from feast.data_source import PushSource
+from feast import FeatureView, Field
 from feast.types import String, Int64, Float64
-from feast.value_type import ValueType
 
-isochrone_entity = Entity(
-    name="isochrone",
-    join_keys=["isochrone_key"],
-    value_type=ValueType.STRING,
-)
-
-isochrone_push = PushSource(
-    name="isochrone_push",
-    batch_source=FileSource(path="dummy", timestamp_field="event_timestamp"),
-)
+from entities import isochrone_entity
+from data_sources import isochrone_push
 
 isochrone_fv = FeatureView(
     name="isochrone_features",
@@ -31,4 +21,5 @@ isochrone_fv = FeatureView(
     source=isochrone_push,
     online=True,
     ttl=timedelta(0),
+    description="Mapbox isochrone geometries per branch, mode, and travel time",
 )

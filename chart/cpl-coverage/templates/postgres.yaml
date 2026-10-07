@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: feast-postgres-data
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+type: Opaque
+stringData:
+  POSTGRES_USER: feast
+  POSTGRES_PASSWORD: feast
+  POSTGRES_DB: feast
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: feast-data-stores
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+type: Opaque
+stringData:
+  postgres: |
+    host: feast-postgres.{{ .Values.namespace }}.svc.cluster.local
+    port: 5432
+    database: ${POSTGRES_DB}
+    db_schema: public
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  sql: |
+    path: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@feast-postgres.{{ .Values.namespace }}.svc.cluster.local:5432/${POSTGRES_DB}
+    cache_ttl_seconds: 60
+    sqlalchemy_config_kwargs:
+      echo: false
+      pool_pre_ping: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feast-postgres
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feast-postgres
+  template:
+    metadata:
+      labels:
+        app: feast-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: registry.redhat.io/rhel9/postgresql-16:9.6
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: feast-postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feast-postgres
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  selector:
+    app: feast-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
