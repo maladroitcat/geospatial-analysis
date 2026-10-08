@@ -73,7 +73,7 @@ metadata:
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "40"
 spec:
   accessModes:
     - ReadWriteOnce
