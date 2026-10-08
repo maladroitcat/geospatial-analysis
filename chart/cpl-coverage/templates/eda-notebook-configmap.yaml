@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eda-notebook-files
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  eda_coverage_heatmap.ipynb: |-
+    {{ .Files.Get "files/eda_coverage_heatmap.ipynb" | nindent 4 }}

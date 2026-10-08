@@ -15,3 +15,5 @@ data:
     {{ .Files.Get "files/compute_coverage.ipynb" | nindent 4 }}
   aggregate_scores.ipynb: |-
     {{ .Files.Get "files/aggregate_scores.ipynb" | nindent 4 }}
+  need_score_pipeline.ipynb: |-
+    {{ .Files.Get "files/need_score_pipeline.ipynb" | nindent 4 }}
