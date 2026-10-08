@@ -22,7 +22,7 @@ spec:
             - /bin/bash
             - -c
             - |
-              for nb in cleaning_pipeline.ipynb fetch_isochrones.ipynb compute_coverage.ipynb aggregate_scores.ipynb need_score_pipeline.ipynb; do
+              for nb in 01_cleaning_pipeline.ipynb 02_fetch_isochrones.ipynb 03_compute_coverage.ipynb 04_aggregate_scores.ipynb; do
                 if ! cmp -s /notebooks/$nb /opt/app-root/src/$nb; then
                   cp /notebooks/$nb /opt/app-root/src/
                   echo "Updated $nb"
