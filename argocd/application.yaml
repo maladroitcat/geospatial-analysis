@@ -21,3 +21,17 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # The RHOAI notebook controller decorates Notebook CRs at reconcile time
+  # (oauth sidecar, trusted-CA mounts, Elyra/MLflow wiring). Without these
+  # exclusions selfHeal reverts the injections on every sync, and the
+  # controller re-emits the TLS env vars in a fresh random order each time,
+  # changing the pod template hash and rolling the workbench (~1x/hour).
+  ignoreDifferences:
+    - group: kubeflow.org
+      kind: Notebook
+      jqPathExpressions:
+        - '.spec.template.spec.containers[] | select(.name == "kube-rbac-proxy")'
+        - '.spec.template.spec.containers[].env[] | select(.name | test("^(KF_PIPELINES_SSL_SA_CERTS|PIPELINES_SSL_SA_CERTS|GIT_SSL_CAINFO|PIP_CERT|REQUESTS_CA_BUNDLE|SSL_CERT_FILE|MLFLOW_)"))'
+        - '.spec.template.spec.containers[].volumeMounts[] | select(.name | test("^(trusted-ca|runtime-images|elyra-dsp-details|kube-rbac-proxy)"))'
+        - '.spec.template.spec.volumes[] | select(.name | test("^(trusted-ca|runtime-images|elyra-dsp-details|kube-rbac-proxy)"))'
+        - '.spec.template.spec.serviceAccountName'
