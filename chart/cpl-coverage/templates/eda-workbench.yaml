@@ -22,7 +22,7 @@ spec:
             - /bin/bash
             - -c
             - |
-              for nb in eda_coverage_heatmap.ipynb; do
+              for nb in eda_coverage_heatmap.ipynb eda_endpoint_test.ipynb; do
                 if ! cmp -s /notebooks/$nb /opt/app-root/src/$nb; then
                   cp /notebooks/$nb /opt/app-root/src/
                   echo "Updated $nb"

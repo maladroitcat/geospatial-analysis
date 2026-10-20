@@ -9,3 +9,5 @@ metadata:
 data:
   eda_coverage_heatmap.ipynb: |-
     {{ .Files.Get "files/eda_coverage_heatmap.ipynb" | nindent 4 }}
+  eda_endpoint_test.ipynb: |-
+    {{ .Files.Get "files/eda_endpoint_test.ipynb" | nindent 4 }}
