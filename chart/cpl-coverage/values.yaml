@@ -11,6 +11,14 @@ s3:
 seed:
   enabled: true
 
+mlflow:
+  # Repoint the shared MLflow instance's artifact store from its PVC to object
+  # storage, so logged models are reachable by KServe. Cluster-wide effect.
+  configureS3Artifacts: true
+  namespace: redhat-ods-applications
+  instanceName: mlflow
+  s3EndpointUrl: https://s3.openshift-storage.svc
+
 secrets:
   mapboxToken: "pk.eyJ1IjoiYWJieXJleW5vbGRzODgiLCJhIjoiY2xqZXBiZzB6MjlzZjNlc2NqNm5ycnZuaSJ9.WrtemsZEU3cK8U-LZUDf7Q"
   censusApiKey: ""
