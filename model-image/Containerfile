@@ -1,0 +1,14 @@
+# OCI packaging for the CPL coverage model.
+#
+# KServe serves this two different ways depending on cluster version. On
+# Kubernetes 1.33+ the kubelet mounts the image directly as a read-only image
+# volume and nothing inside it ever runs. On older clusters it falls back to
+# "modelcar", which runs this image as a sidecar and executes `ln` and `sleep`
+# to share the filesystem. ubi-micro covers both -- a scratch base would be
+# smaller but breaks the modelcar path with no useful error.
+#
+# The path must be /models. KServe presents it to the runtime at /mnt/models.
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+
+RUN mkdir /models && chmod 775 /models
+COPY model.json /models/
