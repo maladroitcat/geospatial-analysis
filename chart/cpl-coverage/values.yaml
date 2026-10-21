@@ -13,7 +13,7 @@ seed:
 
 mcpServer:
   enabled: true
-  image: quay.io/rh-ee-vreynold/cpl-coverage-mcp:0.1.0
+  image: quay.io/rh-ee-vreynold/cpl-coverage-mcp:0.2.0
   # Reference data is mounted from the model image, so this tag pins both the
   # model being called and the tract data used to build its inputs.
   modelImage: quay.io/rh-ee-vreynold/cpl-coverage-model:1.0.2

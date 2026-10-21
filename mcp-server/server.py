@@ -189,6 +189,150 @@ def predict_branch_coverage(
     }
 
 
+@mcp.tool
+def coverage_summary(
+    mode: Literal["walking", "cycling", "driving"] = "walking",
+    travel_time: int = 10,
+) -> dict:
+    """Summarize Chicago Public Library coverage as it stands today.
+
+    Answers "how well served is Chicago right now" without running any
+    prediction. Use this before predict_branch_coverage to establish a
+    baseline.
+
+    Args:
+        mode: Travel mode.
+        travel_time: Travel time in minutes. Available combinations are
+            walking/10, cycling/10 and driving/5.
+
+    Returns:
+        Tract and population counts bucketed by how well covered they are.
+    """
+    tracts = _tracts()
+    cov = _current_coverage(mode, travel_time)
+    if not cov:
+        combos = sorted({(m, int(t)) for m, t in zip(
+            _coverage_scores()["mode"], _coverage_scores()["travel_time"])})
+        raise ValueError(f"No data for {mode}/{travel_time}min. Available: {combos}")
+
+    df = tracts[["geoid", "tract_name", "population"]].copy()
+    df["coverage"] = df["geoid"].map(cov).fillna(0.0)
+
+    buckets = [
+        ("none (0%)", df["coverage"] <= 0.0),
+        ("partial (0-50%)", (df["coverage"] > 0.0) & (df["coverage"] < 0.5)),
+        ("most (50-90%)", (df["coverage"] >= 0.5) & (df["coverage"] < 0.9)),
+        ("full (90%+)", df["coverage"] >= 0.9),
+    ]
+    total_pop = int(df["population"].sum())
+    return {
+        "mode": mode,
+        "travel_time_minutes": travel_time,
+        "total_tracts": len(df),
+        "total_population": total_pop,
+        "mean_coverage": round(float(df["coverage"].mean()), 4),
+        "population_with_no_access": int(df.loc[df["coverage"] <= 0.0, "population"].sum()),
+        "buckets": [
+            {
+                "label": label,
+                "tracts": int(mask.sum()),
+                "population": int(df.loc[mask, "population"].sum()),
+                "pct_of_population": round(
+                    100 * float(df.loc[mask, "population"].sum()) / total_pop, 1
+                ) if total_pop else 0.0,
+            }
+            for label, mask in buckets
+        ],
+    }
+
+
+@mcp.tool
+def find_underserved_tracts(
+    mode: Literal["walking", "cycling", "driving"] = "walking",
+    travel_time: int = 10,
+    limit: int = 10,
+) -> dict:
+    """Find the Chicago census tracts with the worst library access.
+
+    Ranks by population left without access, so a large tract with no
+    coverage outranks a small one. Use this to decide where a new branch
+    would help most, then test specific coordinates with
+    predict_branch_coverage.
+
+    Args:
+        mode: Travel mode.
+        travel_time: Travel time in minutes.
+        limit: How many tracts to return.
+
+    Returns:
+        Tracts ranked by unserved population, with their centroid
+        coordinates so they can be fed straight into predict_branch_coverage.
+    """
+    tracts = _tracts()
+    cov = _current_coverage(mode, travel_time)
+
+    df = tracts.copy()
+    df["coverage"] = df["geoid"].map(cov).fillna(0.0)
+    df["unserved_population"] = (df["population"] * (1.0 - df["coverage"])).round().astype(int)
+    df = df.sort_values("unserved_population", ascending=False).head(max(1, limit))
+
+    return {
+        "mode": mode,
+        "travel_time_minutes": travel_time,
+        "tracts": [
+            {
+                "geoid": str(r.geoid),
+                "tract_name": r.tract_name,
+                "population": int(r.population),
+                "current_coverage": round(float(r.coverage), 4),
+                "unserved_population": int(r.unserved_population),
+                "latitude": round(float(r.centroid_lat), 6),
+                "longitude": round(float(r.centroid_lon), 6),
+            }
+            for r in df.itertuples()
+        ],
+    }
+
+
+@mcp.tool
+def lookup_tract(query: str) -> dict:
+    """Look up a census tract's current coverage across all travel modes.
+
+    Args:
+        query: A full or partial GEOID (e.g. "17031839100") or part of a
+            tract name (e.g. "8391"). Matching is substring-based.
+
+    Returns:
+        The matching tracts with coverage for every mode and travel time.
+    """
+    tracts = _tracts()
+    q = str(query).strip().lower()
+    hit = tracts[
+        tracts["geoid"].astype(str).str.contains(q, na=False)
+        | tracts["tract_name"].astype(str).str.lower().str.contains(q, na=False)
+    ]
+    if hit.empty:
+        raise ValueError(f"No tract matched {query!r}. Try a GEOID like 17031839100.")
+
+    scores = _coverage_scores()
+    out = []
+    for r in hit.head(5).itertuples():
+        s = scores[scores["geoid"] == r.geoid]
+        out.append({
+            "geoid": str(r.geoid),
+            "tract_name": r.tract_name,
+            "population": int(r.population),
+            "latitude": round(float(r.centroid_lat), 6),
+            "longitude": round(float(r.centroid_lon), 6),
+            "coverage": [
+                {"mode": x.mode, "travel_time": int(x.travel_time),
+                 "percent_covered": round(float(x.percent_covered), 4)}
+                for x in s.itertuples()
+            ],
+        })
+    return {"matches": len(hit), "showing": len(out), "tracts": out}
+
+
 if __name__ == "__main__":
     # HTTP rather than stdio: this runs as a long-lived Service that agents
     # connect to over the network, not as a subprocess.
