@@ -190,6 +190,39 @@ def predict_branch_coverage(
 
 
 @mcp.tool
+def describe_dataset() -> dict:
+    """Describe what Chicago Public Library data is available.
+
+    Takes no arguments. Use this first to find out what the dataset
+    contains -- how many census tracts, what population it covers, which
+    travel modes and travel times have been measured, and what the other
+    tools can answer.
+
+    Returns:
+        Dataset size, coverage of the data, and available mode/time pairs.
+    """
+    tracts = _tracts()
+    scores = _coverage_scores()
+    combos = sorted({(m, int(t)) for m, t in zip(scores["mode"], scores["travel_time"])})
+    return {
+        "city": "Chicago, Illinois",
+        "census_tracts": len(tracts),
+        "total_population": int(tracts["population"].sum()),
+        "coverage_measurements": len(scores),
+        "available_modes": [f"{m}/{t}min" for m, t in combos],
+        "model": "XGBoost regressor predicting what fraction of a census "
+                 "tract a new library branch would put within reach",
+        "tools": {
+            "describe_dataset": "what data is available (this tool)",
+            "coverage_summary": "how well served Chicago is today",
+            "find_underserved_tracts": "which tracts have the worst access",
+            "lookup_tract": "coverage for one specific tract",
+            "predict_branch_coverage": "what a new branch at given coordinates would cover",
+        },
+    }
+
+
+@mcp.tool
 def coverage_summary(
     mode: Literal["walking", "cycling", "driving", "all"] = "walking",
     travel_time: int = 10,
