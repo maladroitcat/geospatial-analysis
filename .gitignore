@@ -132,3 +132,4 @@ dmypy.json
 
 # model artifact fetched from S3 at build time
 model-image/model.json
+model-image/data/

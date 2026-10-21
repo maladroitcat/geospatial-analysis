@@ -12,3 +12,11 @@ FROM registry.access.redhat.com/ubi9/ubi-micro:latest
 
 RUN mkdir /models && chmod 775 /models
 COPY model.json /models/
+
+# Reference data for the MCP server: tract centroids/areas/population and the
+# current coverage scores, precomputed from S3 at build time. KServe mounts
+# this image with subPath "models", so nothing here is visible to the model
+# server -- it only ever sees /models/model.json. Shipping both together keeps
+# the model and the data it was trained against on one version tag.
+RUN mkdir /data && chmod 775 /data
+COPY data/ /data/

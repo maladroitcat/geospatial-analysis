@@ -1,0 +1,17 @@
+# MCP server exposing the coverage model as an agent tool.
+#
+# Deliberately contains no model and no reference data. Both arrive at runtime
+# from the model image, mounted as an image volume at /data, so retraining the
+# model means bumping one image tag rather than rebuilding this.
+FROM registry.access.redhat.com/ubi9/python-312:latest
+
+WORKDIR /opt/app-root/src
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY server.py .
+
+EXPOSE 8000
+
+CMD ["python", "server.py"]

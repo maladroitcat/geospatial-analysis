@@ -1,0 +1,130 @@
+{{- if .Values.mcpServer.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cpl-coverage-mcp
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "45"
+{{- if .Values.mcpServer.imagePullSecret }}
+imagePullSecrets:
+  - name: {{ .Values.mcpServer.imagePullSecret }}
+{{- end }}
+---
+# The model endpoint sits behind kube-rbac-proxy, which authorizes callers with
+# a SubjectAccessReview for "get" on the InferenceService. Granting that to this
+# ServiceAccount lets the pod authenticate with its own token instead of a
+# static credential copied into a Secret.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cpl-coverage-mcp-model-caller
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "45"
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices"]
+    resourceNames: [{{ .Values.mcpServer.modelName | quote }}]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cpl-coverage-mcp-model-caller
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "45"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cpl-coverage-mcp-model-caller
+subjects:
+  - kind: ServiceAccount
+    name: cpl-coverage-mcp
+    namespace: {{ .Values.namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpl-coverage-mcp
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+    app: cpl-coverage-mcp
+  annotations:
+    argocd.argoproj.io/sync-wave: "45"
+spec:
+  replicas: {{ .Values.mcpServer.replicaCount }}
+  selector:
+    matchLabels:
+      app: cpl-coverage-mcp
+  template:
+    metadata:
+      labels:
+        {{- include "cpl-coverage.labels" . | nindent 8 }}
+        app: cpl-coverage-mcp
+    spec:
+      serviceAccountName: cpl-coverage-mcp
+      containers:
+        - name: mcp
+          image: {{ .Values.mcpServer.image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: {{ .Values.mcpServer.port }}
+              name: http
+              protocol: TCP
+          env:
+            - name: MCP_PORT
+              value: {{ .Values.mcpServer.port | quote }}
+            - name: MODEL_NAME
+              value: {{ .Values.mcpServer.modelName | quote }}
+            # Internal service, so traffic never leaves the cluster and does
+            # not depend on the external route existing.
+            - name: MODEL_ENDPOINT
+              value: "https://{{ .Values.mcpServer.modelName }}-predictor.{{ .Values.namespace }}.svc:8443"
+            - name: DATA_DIR
+              value: /data
+          volumeMounts:
+            - name: model-data
+              mountPath: /data
+              # Without this the whole image root lands at /data; we want only
+              # its /data directory, the same way KServe takes only /models.
+              subPath: data
+              readOnly: true
+          resources:
+            {{- toYaml .Values.mcpServer.resources | nindent 12 }}
+      volumes:
+        # Reference data rides in the model image. Mounting it here rather than
+        # baking it into the MCP image means a retrained model is a tag bump,
+        # and the data can never disagree with the model it was built from.
+        - name: model-data
+          image:
+            reference: {{ .Values.mcpServer.modelImage | quote }}
+            pullPolicy: IfNotPresent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cpl-coverage-mcp
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "45"
+spec:
+  type: ClusterIP
+  selector:
+    app: cpl-coverage-mcp
+  ports:
+    - name: http
+      port: {{ .Values.mcpServer.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}
