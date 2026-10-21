@@ -191,7 +191,7 @@ def predict_branch_coverage(
 
 @mcp.tool
 def coverage_summary(
-    mode: Literal["walking", "cycling", "driving"] = "walking",
+    mode: Literal["walking", "cycling", "driving", "all"] = "walking",
     travel_time: int = 10,
 ) -> dict:
     """Summarize Chicago Public Library coverage as it stands today.
@@ -201,13 +201,22 @@ def coverage_summary(
     baseline.
 
     Args:
-        mode: Travel mode.
-        travel_time: Travel time in minutes. Available combinations are
-            walking/10, cycling/10 and driving/5.
+        mode: Travel mode, or "all" to compare every mode side by side.
+        travel_time: Travel time in minutes. Ignored when mode is "all".
+            Available combinations are walking/10, cycling/10, driving/5.
 
     Returns:
         Tract and population counts bucketed by how well covered they are.
     """
+    if mode == "all":
+        scores = _coverage_scores()
+        combos = sorted({(m, int(t)) for m, t in zip(scores["mode"], scores["travel_time"])})
+        return {
+            "mode": "all",
+            "modes_compared": [f"{m}/{t}min" for m, t in combos],
+            "summaries": [coverage_summary(mode=m, travel_time=t) for m, t in combos],
+        }
+
     tracts = _tracts()
     cov = _current_coverage(mode, travel_time)
     if not cov:
