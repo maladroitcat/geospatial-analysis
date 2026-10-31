@@ -6,12 +6,17 @@ import os
 from pathlib import Path
 from typing import Literal
 
+import logging
+
 import pandas as pd
 import requests
 import urllib3
 from fastmcp import FastMCP
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("cpl-mcp")
 
 mcp = FastMCP("cpl-coverage")
 
@@ -125,6 +130,7 @@ def predict_branch_coverage(
     Returns:
         Summary counts plus the top_n tracts ranked by coverage gained.
     """
+    log.info("TOOL predict_branch_coverage(lat=%s, lon=%s, mode=%s, tt=%s)", latitude, longitude, mode, travel_time)
     if not LAT_RANGE[0] <= latitude <= LAT_RANGE[1] or not LON_RANGE[0] <= longitude <= LON_RANGE[1]:
         raise ValueError(
             f"({latitude}, {longitude}) is outside Chicago "
@@ -172,6 +178,9 @@ def predict_branch_coverage(
 
     results.sort(key=lambda r: r["delta"], reverse=True)
     gained = [r for r in results if r["delta"] > 0.01]
+    log.info("  -> %d tracts gain coverage, %d people, max delta %.4f",
+             len(gained), sum(r["population"] for r in gained),
+             max((r["delta"] for r in results), default=0.0))
 
     return {
         "location": {"latitude": latitude, "longitude": longitude},
@@ -201,6 +210,7 @@ def describe_dataset() -> dict:
     Returns:
         Dataset size, coverage of the data, and available mode/time pairs.
     """
+    log.info("TOOL describe_dataset()")
     tracts = _tracts()
     scores = _coverage_scores()
     combos = sorted({(m, int(t)) for m, t in zip(scores["mode"], scores["travel_time"])})
@@ -241,6 +251,7 @@ def coverage_summary(
     Returns:
         Tract and population counts bucketed by how well covered they are.
     """
+    log.info("TOOL coverage_summary(mode=%s, travel_time=%s)", mode, travel_time)
     if mode == "all":
         scores = _coverage_scores()
         combos = sorted({(m, int(t)) for m, t in zip(scores["mode"], scores["travel_time"])})
@@ -310,6 +321,7 @@ def find_underserved_tracts(
         Tracts ranked by unserved population, with their centroid
         coordinates so they can be fed straight into predict_branch_coverage.
     """
+    log.info("TOOL find_underserved_tracts(mode=%s, travel_time=%s, limit=%s)", mode, travel_time, limit)
     tracts = _tracts()
     cov = _current_coverage(mode, travel_time)
 
@@ -347,6 +359,7 @@ def lookup_tract(query: str) -> dict:
     Returns:
         The matching tracts with coverage for every mode and travel time.
     """
+    log.info("TOOL lookup_tract(query=%r)", query)
     tracts = _tracts()
     q = str(query).strip().lower()
     hit = tracts[
