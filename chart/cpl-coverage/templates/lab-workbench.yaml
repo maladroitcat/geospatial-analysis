@@ -13,6 +13,11 @@ metadata:
   annotations:
     opendatahub.io/image-display-name: Standard Data Science
     notebooks.opendatahub.io/inject-auth: "true"
+    # Covers the interactive case: this is what makes the controller inject
+    # MLFLOW_TRACKING_URI into the workbench. It is the same thing the
+    # dashboard's "connect to MLflow" checkbox writes, declared here so it
+    # survives a rebuild. Pipeline runs are handled by the DSPA instead.
+    opendatahub.io/mlflow-instance: {{ .Values.mlflow.instanceName | quote }}
     openshift.io/display-name: lab
     argocd.argoproj.io/sync-wave: "40"
 spec:

@@ -8,6 +8,13 @@ metadata:
     argocd.argoproj.io/sync-wave: "20"
 spec:
   dspVersion: v2
+  # Without this the API server still records a parent run per pipeline and a
+  # nested run per task, but the task containers get no MLflow env vars, so
+  # code inside a step cannot log to it. injectUserEnvVars defaults to false
+  # when the whole block is omitted -- it has to be stated to be on.
+  mlflow:
+    integrationMode: AUTODETECT
+    injectUserEnvVars: true
   apiServer:
     deploy: true
     enableOauth: true

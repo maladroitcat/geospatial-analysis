@@ -9,6 +9,7 @@ metadata:
   annotations:
     opendatahub.io/image-display-name: Standard Data Science
     notebooks.opendatahub.io/inject-auth: "true"
+    opendatahub.io/mlflow-instance: {{ .Values.mlflow.instanceName | quote }}
     openshift.io/display-name: pipelines
     argocd.argoproj.io/sync-wave: "40"
 spec:
