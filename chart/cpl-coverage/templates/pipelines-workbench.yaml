@@ -8,8 +8,7 @@ metadata:
     opendatahub.io/odh-managed: "true"
   annotations:
     opendatahub.io/image-display-name: Standard Data Science
-    notebooks.opendatahub.io/inject-oauth: "true"
-    notebooks.opendatahub.io/oauth-logout-url: ""
+    notebooks.opendatahub.io/inject-auth: "true"
     openshift.io/display-name: pipelines
     argocd.argoproj.io/sync-wave: "40"
 spec:
