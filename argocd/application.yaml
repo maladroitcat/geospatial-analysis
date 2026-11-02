@@ -25,7 +25,7 @@ spec:
   # (oauth sidecar, trusted-CA mounts, Elyra/MLflow wiring). Without these
   # exclusions selfHeal reverts the injections on every sync, and the
   # controller re-emits the TLS env vars in a fresh random order each time,
-  # changing the pod template hash and rolling the workbench (~1x/hour).
+  # changing the pod template hash and rolling the workbench.
   ignoreDifferences:
     - group: kubeflow.org
       kind: Notebook
@@ -35,3 +35,11 @@ spec:
         - '.spec.template.spec.containers[].volumeMounts[] | select(.name | test("^(trusted-ca|runtime-images|elyra-dsp-details|kube-rbac-proxy)"))'
         - '.spec.template.spec.volumes[] | select(.name | test("^(trusted-ca|runtime-images|elyra-dsp-details|kube-rbac-proxy)"))'
         - '.spec.template.spec.serviceAccountName'
+    # OpenShift's ServiceAccount controller appends a dockercfg secret for the
+    # internal registry to every SA. ArgoCD treats that as drift and removes it,
+    # the controller re-adds it, and the sync never settles.
+    - group: ''
+      kind: ServiceAccount
+      jsonPointers:
+        - /imagePullSecrets
+        - /secrets
