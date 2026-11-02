@@ -11,6 +11,11 @@ s3:
 seed:
   enabled: true
 
+# Third workbench holding the five pipeline steps as plain notebooks, for
+# running them by hand or assembling them into a pipeline with Elyra.
+labWorkbench:
+  enabled: true
+
 mcpServer:
   enabled: true
   image: quay.io/rh-ee-vreynold/cpl-coverage-mcp:0.3.1

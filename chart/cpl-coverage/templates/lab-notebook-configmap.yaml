@@ -1,0 +1,23 @@
+{{- if .Values.labWorkbench.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab-notebook-files
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  00_start_here.ipynb: |-
+    {{ .Files.Get "files/lab/00_start_here.ipynb" | nindent 4 }}
+  01_clean_data.ipynb: |-
+    {{ .Files.Get "files/lab/01_clean_data.ipynb" | nindent 4 }}
+  02_fetch_isochrones.ipynb: |-
+    {{ .Files.Get "files/lab/02_fetch_isochrones.ipynb" | nindent 4 }}
+  03_compute_coverage.ipynb: |-
+    {{ .Files.Get "files/lab/03_compute_coverage.ipynb" | nindent 4 }}
+  04_aggregate_scores.ipynb: |-
+    {{ .Files.Get "files/lab/04_aggregate_scores.ipynb" | nindent 4 }}
+  05_train_model.ipynb: |-
+    {{ .Files.Get "files/lab/05_train_model.ipynb" | nindent 4 }}
+{{- end }}

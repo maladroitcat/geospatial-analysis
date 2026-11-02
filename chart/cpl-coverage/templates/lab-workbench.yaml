@@ -1,0 +1,91 @@
+{{- if .Values.labWorkbench.enabled }}
+# Sandbox copy of the five pipeline steps as plain notebooks. Same code as the
+# `pipelines` workbench, minus the KFP decorators, so the steps can be run cell
+# by cell or wired together on an Elyra canvas.
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: lab
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+  annotations:
+    opendatahub.io/image-display-name: Standard Data Science
+    notebooks.opendatahub.io/inject-auth: "true"
+    openshift.io/display-name: lab
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: copy-notebooks
+          image: registry.access.redhat.com/ubi9/python-312
+          command:
+            - /bin/bash
+            - -c
+            - |
+              for nb in 00_start_here.ipynb 01_clean_data.ipynb 02_fetch_isochrones.ipynb 03_compute_coverage.ipynb 04_aggregate_scores.ipynb 05_train_model.ipynb; do
+                if ! cmp -s /notebooks/$nb /opt/app-root/src/$nb; then
+                  cp /notebooks/$nb /opt/app-root/src/
+                  echo "Updated $nb"
+                else
+                  echo "$nb unchanged, skipping."
+                fi
+              done
+          volumeMounts:
+            - name: notebooks
+              mountPath: /notebooks
+            - name: workspace
+              mountPath: /opt/app-root/src
+      containers:
+        - name: lab
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          env:
+            - name: NOTEBOOK_ARGS
+              value: "--NotebookApp.token='' --NotebookApp.password='' --ServerApp.port=8888 --ServerApp.base_url=/notebook/{{ .Values.namespace }}/lab"
+          envFrom:
+            - secretRef:
+                name: cpl-s3
+            # Step 02 calls Mapbox directly here instead of through a KFP task,
+            # so the token has to be on the workbench itself.
+            - secretRef:
+                name: mapbox-token
+                optional: true
+          volumeMounts:
+            - name: workspace
+              mountPath: /opt/app-root/src
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: lab-pvc
+        - name: notebooks
+          configMap:
+            name: lab-notebook-files
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lab-pvc
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+{{- end }}
