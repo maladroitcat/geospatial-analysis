@@ -7,14 +7,5 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 data:
-  01_cleaning_pipeline.ipynb: |-
-    {{ .Files.Get "files/01_cleaning_pipeline.ipynb" | nindent 4 }}
-  02_fetch_isochrones.ipynb: |-
-    {{ .Files.Get "files/02_fetch_isochrones.ipynb" | nindent 4 }}
-  03_compute_coverage.ipynb: |-
-    {{ .Files.Get "files/03_compute_coverage.ipynb" | nindent 4 }}
-  04_aggregate_scores.ipynb: |-
-    {{ .Files.Get "files/04_aggregate_scores.ipynb" | nindent 4 }}
-  05_coverage_model.ipynb: |-
-    {{ .Files.Get "files/05_coverage_model.ipynb" | nindent 4 }}
-
+  cpl_coverage_pipeline.ipynb: |-
+    {{ .Files.Get "files/cpl_coverage_pipeline.ipynb" | nindent 4 }}
