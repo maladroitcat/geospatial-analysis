@@ -6,7 +6,9 @@
 #
 # The ConfigMap is shared by every project on the cluster, so Argo CD applies
 # it server-side: it owns only the key below and leaves other entries alone.
-# Delete=false keeps the shared ConfigMap if this app is ever removed.
+# Prune=false and Delete=false keep the shared ConfigMap if this entry ever
+# leaves the chart or the app is removed. (Delete=false alone only covers
+# app deletion; pruning during a sync needs Prune=false.)
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -14,7 +16,7 @@ metadata:
   namespace: {{ .Values.mcpServer.dashboard.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "46"
-    argocd.argoproj.io/sync-options: ServerSideApply=true,Delete=false
+    argocd.argoproj.io/sync-options: ServerSideApply=true,Prune=false,Delete=false
 data:
   cpl-coverage: |-
     {{- dict

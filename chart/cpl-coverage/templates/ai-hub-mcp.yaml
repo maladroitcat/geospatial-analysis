@@ -5,8 +5,8 @@
 # settings it doesn't list.)
 #
 # This ConfigMap is shared OpenShift AI configuration, so Argo CD applies it
-# server-side and owns only the keys written here. Delete=false leaves it in
-# place if this app is removed. Argo CD needs the grant in argocd/rbac.yaml.
+# server-side and owns only the keys written here. Prune=false and
+# Delete=false keep it if this template leaves the chart or the app is removed. Argo CD needs the grant in argocd/rbac.yaml.
 ---
 # User MCP catalog sources, read by the model catalog service. sources.yaml
 # lists the catalogs; the second key is our catalog file, which appears beside
@@ -18,7 +18,7 @@ metadata:
   namespace: {{ .Values.mcpServer.aiHub.catalogNamespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "46"
-    argocd.argoproj.io/sync-options: ServerSideApply=true,Delete=false
+    argocd.argoproj.io/sync-options: ServerSideApply=true,Prune=false,Delete=false
 data:
   sources.yaml: |-
     mcp_catalogs:
