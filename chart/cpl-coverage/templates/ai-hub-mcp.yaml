@@ -1,0 +1,44 @@
+{{- if and .Values.mcpServer.enabled .Values.mcpServer.aiHub.enabled }}
+# Makes the MCP server visible under AI hub -> MCP servers.
+#
+# Both objects below are shared, cluster-wide OpenShift AI configuration, so
+# Argo CD applies them server-side and owns only the fields written here.
+# Delete=false leaves them in place if this app is removed. Argo CD needs the
+# grants in argocd/rbac.yaml for both namespaces.
+---
+# Turn on the MCP catalog page. OpenShift AI ships it switched off.
+apiVersion: opendatahub.io/v1alpha
+kind: OdhDashboardConfig
+metadata:
+  name: odh-dashboard-config
+  namespace: {{ .Values.mcpServer.dashboard.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "46"
+    argocd.argoproj.io/sync-options: ServerSideApply=true,Delete=false
+spec:
+  dashboardConfig:
+    mcpCatalog: true
+---
+# User MCP catalog sources, read by the model catalog service. sources.yaml
+# lists the catalogs; the second key is our catalog file, which appears beside
+# it at /data/user-mcp-sources in the catalog pod.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-catalog-sources
+  namespace: {{ .Values.mcpServer.aiHub.catalogNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "46"
+    argocd.argoproj.io/sync-options: ServerSideApply=true,Delete=false
+data:
+  sources.yaml: |-
+    mcp_catalogs:
+      - name: CPL Coverage
+        id: cpl_coverage_mcp
+        type: yaml
+        enabled: true
+        properties:
+          yamlCatalogPath: /data/user-mcp-sources/cpl-coverage-mcp-catalog.yaml
+  cpl-coverage-mcp-catalog.yaml: |-
+    {{- tpl (.Files.Get "files/mcp-catalog/cpl-coverage.yaml") . | nindent 4 }}
+{{- end }}

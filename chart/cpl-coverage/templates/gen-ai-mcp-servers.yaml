@@ -18,7 +18,7 @@ metadata:
 data:
   cpl-coverage: |-
     {{- dict
-        "url" (printf "http://cpl-coverage-mcp.%s.svc.cluster.local:%v/mcp" .Values.namespace .Values.mcpServer.port)
+        "url" (printf "http://%s.%s.svc.cluster.local:%v/mcp" .Values.mcpServer.name .Values.namespace .Values.mcpServer.port)
         "transport" "streamable-http"
         "description" .Values.mcpServer.dashboard.description
       | toPrettyJson | nindent 4 }}

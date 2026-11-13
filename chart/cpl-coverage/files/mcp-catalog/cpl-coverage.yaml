@@ -1,0 +1,148 @@
+{{- /* Rendered with tpl, so values are available. */ -}}
+source: CPL Coverage
+mcp_servers:
+    - name: {{ .Values.mcpServer.name }}
+      provider: CPL Coverage project
+      description: {{ .Values.mcpServer.dashboard.description | quote }}
+      readme: |-
+        # Chicago Public Library Coverage MCP Server
+
+        Answers questions about how well Chicago Public Library branches cover
+        the city's census tracts on foot, by bike and by car, and estimates
+        how much a new branch at given coordinates would add.
+
+        ## Tools
+        - **predict_branch_coverage**: estimate which tracts a new branch at a
+          latitude and longitude would reach, and how many residents gain access
+        - **describe_dataset**: describe the tracts, travel modes and scores
+          available
+        - **coverage_summary**: summarize coverage as it stands today
+        - **find_underserved_tracts**: list the tracts with the worst access
+        - **lookup_tract**: show one tract's coverage across all travel modes
+
+        ## How it works
+        Predictions come from the `{{ .Values.mcpServer.modelName }}` coverage
+        model served by KServe in the same project. The server calls it with its
+        own service account token, so no credentials need to be configured.
+        Tract reference data is mounted from the `cpl-coverage-mcp-data`
+        ConfigMap at `/data`.
+
+        ## Prerequisites
+        - The `{{ .Values.mcpServer.modelName }}` model deployed in the project
+          for `predict_branch_coverage`. The other tools work without it.
+        - The `cpl-coverage-mcp` service account, allowed to `get` that
+          InferenceService.
+        - The `cpl-coverage-mcp-data` ConfigMap.
+
+        All of these are created by the project's `cpl-coverage` Helm chart.
+      version: {{ .Values.mcpServer.image | splitList ":" | last | quote }}
+      transports:
+        - http
+      repositoryUrl: {{ .Values.git.repoURL }}
+      deploymentMode: local
+      tags:
+        - chicago
+        - libraries
+        - geospatial
+        - census
+        - coverage
+      tools:
+        - name: predict_branch_coverage
+          description: "Estimate the coverage a new Chicago Public Library branch would provide."
+          accessType: read_only
+          parameters:
+            - name: latitude
+              type: number
+              description: "Latitude of the candidate branch (Chicago is roughly 41.60 to 42.06)"
+              required: true
+            - name: longitude
+              type: number
+              description: "Longitude of the candidate branch (Chicago is roughly -87.98 to -87.50)"
+              required: true
+            - name: mode
+              type: string
+              description: "Travel mode: walking, cycling or driving"
+              required: false
+            - name: travel_time
+              type: integer
+              description: "Travel time in minutes (walking 10, cycling 10, driving 5 are scored today)"
+              required: false
+            - name: top_n
+              type: integer
+              description: "How many tracts with the largest gain to return"
+              required: false
+        - name: describe_dataset
+          description: "Describe what Chicago Public Library data is available."
+          accessType: read_only
+          parameters: []
+        - name: coverage_summary
+          description: "Summarize Chicago Public Library coverage as it stands today."
+          accessType: read_only
+          parameters:
+            - name: mode
+              type: string
+              description: "Travel mode: walking, cycling or driving"
+              required: false
+            - name: travel_time
+              type: integer
+              description: "Travel time in minutes (walking 10, cycling 10, driving 5 are scored today)"
+              required: false
+        - name: find_underserved_tracts
+          description: "Find the Chicago census tracts with the worst library access."
+          accessType: read_only
+          parameters:
+            - name: mode
+              type: string
+              description: "Travel mode: walking, cycling or driving"
+              required: false
+            - name: travel_time
+              type: integer
+              description: "Travel time in minutes (walking 10, cycling 10, driving 5 are scored today)"
+              required: false
+            - name: limit
+              type: integer
+              description: "How many tracts to return"
+              required: false
+        - name: lookup_tract
+          description: "Look up a census tract's current coverage across all travel modes."
+          accessType: read_only
+          parameters:
+            - name: query
+              type: string
+              description: "Census tract name or 11-digit GEOID"
+              required: true
+      artifacts:
+        - uri: oci://{{ .Values.mcpServer.image }}
+      runtimeMetadata:
+        defaultPort: {{ .Values.mcpServer.port }}
+        mcpPath: /mcp
+        requiredEnvironmentVariables:
+          - name: MODEL_NAME
+            description: Name of the coverage model's InferenceService
+            required: true
+            defaultValue: {{ .Values.mcpServer.modelName | quote }}
+            type: string
+          - name: DATA_DIR
+            description: Directory holding tracts.parquet and coverage_scores.parquet
+            required: true
+            defaultValue: /data
+            type: string
+        optionalEnvironmentVariables:
+          - name: MODEL_ENDPOINT
+            description: Model URL; defaults to the InferenceService's route
+            required: false
+            type: string
+        capabilities:
+          requiresNetwork: true
+          requiresFileSystem: false
+          requiresGPU: false
+        prerequisites:
+          serviceAccount:
+            required: true
+            suggestedName: cpl-coverage-mcp
+            hint: Needs get on the {{ .Values.mcpServer.modelName }} InferenceService to call the model
+          configMaps:
+            - name: cpl-coverage-mcp-data
+              description: Tract reference data (tracts.parquet, coverage_scores.parquet)
+              mountAsFile: true
+              mountPath: /data

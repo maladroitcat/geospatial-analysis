@@ -1,0 +1,97 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-enable-components
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    # A Sync hook, not PostSync: the FeatureStore (wave 25) and MCPServer
+    # (wave 45) can't be created until this job has switched their operators
+    # on and the CRDs exist,
+    # and a PostSync hook never runs if the sync itself can't succeed. Argo CD
+    # waits for a Sync-hook Job to finish before moving to the next wave. Wave
+    # 10 is after this job's ServiceAccount and RBAC (wave 0).
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "cpl-coverage.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: component-enabler
+      containers:
+        - name: enable-components
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Platform components this chart builds on that OpenShift AI ships
+              # switched off: Feast (FeatureStore) and the MCP lifecycle
+              # operator (MCPServer). Each is listed with the CRD it provides.
+              enable() {
+                COMPONENT=$1; CRD=$2
+                CURRENT=$(oc get datasciencecluster default-dsc -o jsonpath="{.spec.components.${COMPONENT}.managementState}")
+                if [ "$CURRENT" = "Managed" ]; then
+                  echo "${COMPONENT} already enabled."
+                else
+                  oc patch datasciencecluster default-dsc --type merge -p "{\"spec\":{\"components\":{\"${COMPONENT}\":{\"managementState\":\"Managed\"}}}}"
+                  echo "${COMPONENT} enabled."
+                fi
+                # Don't return until the CRD is usable, so later sync waves can
+                # create resources of that kind.
+                for i in $(seq 1 60); do
+                  if oc get crd "$CRD" >/dev/null 2>&1; then
+                    oc wait --for=condition=Established "crd/$CRD" --timeout=120s && return 0
+                  fi
+                  echo "Waiting for CRD $CRD... ($i/60)"
+                  sleep 10
+                done
+                echo "ERROR: CRD $CRD did not appear within 10 minutes"
+                return 1
+              }
+
+              set -e
+              enable feastoperator featurestores.feast.dev
+              enable mcplifecycleoperator mcpservers.mcp.x-k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: component-enabler
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-component-enabler
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["datasciencecluster.opendatahub.io"]
+    resources: ["datascienceclusters"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-component-enabler
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "cpl-coverage.name" . }}-component-enabler
+subjects:
+  - kind: ServiceAccount
+    name: component-enabler
+    namespace: {{ .Values.namespace }}

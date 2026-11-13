@@ -6,9 +6,10 @@
 # The chart's MLflow storage setup (templates/mlflow-storage.yaml) creates a
 # bucket claim, a CA ConfigMap, and a Role/RoleBinding for its configure job in
 # OpenShift AI's namespace, redhat-ods-applications. Argo CD has no rights there
-# by default, and the chart can't grant them to itself. This Role covers only
-# those resource types in that one namespace, rather than labeling the whole
-# namespace as managed by Argo CD.
+# by default, and the chart can't grant them to itself. The chart also lists
+# the MCP server in the dashboard (redhat-ods-applications) and in the MCP
+# catalog (rhoai-model-registries). These Roles cover only those resource types
+# in those namespaces, rather than labeling the namespaces as managed by Argo CD.
 #
 # Secrets are included because Kubernetes only lets Argo CD create a Role that
 # grants secret access if Argo CD holds that access itself.
@@ -27,6 +28,10 @@ rules:
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["roles", "rolebindings"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # templates/ai-hub-mcp.yaml turns on the dashboard's MCP catalog page.
+  - apiGroups: ["opendatahub.io"]
+    resources: ["odhdashboardconfigs"]
+    verbs: ["get", "list", "watch", "update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -37,6 +42,31 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: argocd-cpl-coverage-mlflow
+subjects:
+  - kind: ServiceAccount
+    name: openshift-gitops-argocd-application-controller
+    namespace: openshift-gitops
+---
+# templates/ai-hub-mcp.yaml adds the CPL entry to the user MCP catalog sources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-cpl-coverage-mcp-catalog
+  namespace: rhoai-model-registries
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-cpl-coverage-mcp-catalog
+  namespace: rhoai-model-registries
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-cpl-coverage-mcp-catalog
 subjects:
   - kind: ServiceAccount
     name: openshift-gitops-argocd-application-controller

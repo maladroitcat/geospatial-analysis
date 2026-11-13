@@ -13,14 +13,21 @@ seed:
 
 mcpServer:
   enabled: true
+  # Name of the MCPServer resource; the operator names its Service after it.
+  name: cpl-coverage
   image: quay.io/rh-ee-vreynold/cpl-coverage-mcp:0.3.1
-  # Reference data is mounted from the model image, so this tag pins both the
-  # model being called and the tract data used to build its inputs.
+  # Image the model endpoint (cov-1) can be deployed from. The MCP server's
+  # own reference data ships with the chart (files/mcp-data).
   modelImage: quay.io/rh-ee-vreynold/cpl-coverage-model:1.0.2
   modelName: cov-1
   # Both images are public on Quay, so no pull secret is needed.
   imagePullSecret: ""
-  # Register the server in the OpenShift AI dashboard's "MCP servers" tab.
+  # List the server in AI hub -> MCP servers: turns on the dashboard's MCP
+  # catalog page and adds a catalog entry (templates/ai-hub-mcp.yaml).
+  aiHub:
+    enabled: true
+    catalogNamespace: rhoai-model-registries
+  # Also list it in Gen AI studio's MCP servers (templates/gen-ai-mcp-servers.yaml).
   dashboard:
     register: true
     namespace: redhat-ods-applications

@@ -50,81 +50,66 @@ subjects:
     name: cpl-coverage-mcp
     namespace: {{ .Values.namespace }}
 ---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: cpl-coverage-mcp
-  namespace: {{ .Values.namespace }}
-  labels:
-    {{- include "cpl-coverage.labels" . | nindent 4 }}
-    app: cpl-coverage-mcp
-  annotations:
-    argocd.argoproj.io/sync-wave: "45"
-spec:
-  replicas: {{ .Values.mcpServer.replicaCount }}
-  selector:
-    matchLabels:
-      app: cpl-coverage-mcp
-  template:
-    metadata:
-      labels:
-        {{- include "cpl-coverage.labels" . | nindent 8 }}
-        app: cpl-coverage-mcp
-    spec:
-      serviceAccountName: cpl-coverage-mcp
-      containers:
-        - name: mcp
-          image: {{ .Values.mcpServer.image }}
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: {{ .Values.mcpServer.port }}
-              name: http
-              protocol: TCP
-          env:
-            - name: MCP_PORT
-              value: {{ .Values.mcpServer.port | quote }}
-            - name: MODEL_NAME
-              value: {{ .Values.mcpServer.modelName | quote }}
-            # Internal service, so traffic never leaves the cluster and does
-            # not depend on the external route existing.
-            - name: MODEL_ENDPOINT
-              value: "https://{{ .Values.mcpServer.modelName }}-predictor.{{ .Values.namespace }}.svc:8443"
-            - name: DATA_DIR
-              value: /data
-          volumeMounts:
-            - name: model-data
-              mountPath: /data
-              # Without this the whole image root lands at /data; we want only
-              # its /data directory, the same way KServe takes only /models.
-              subPath: data
-              readOnly: true
-          resources:
-            {{- toYaml .Values.mcpServer.resources | nindent 12 }}
-      volumes:
-        # Reference data rides in the model image. Mounting it here rather than
-        # baking it into the MCP image means a retrained model is a tag bump,
-        # and the data can never disagree with the model it was built from.
-        - name: model-data
-          image:
-            reference: {{ .Values.mcpServer.modelImage | quote }}
-            pullPolicy: IfNotPresent
----
+# Reference data the server answers from: tract centroids, areas and population,
+# and current coverage per tract and travel mode. Shipped with the chart so the
+# MCPServer below can mount it; MCPServer storage takes ConfigMaps and Secrets.
 apiVersion: v1
-kind: Service
+kind: ConfigMap
 metadata:
-  name: cpl-coverage-mcp
+  name: cpl-coverage-mcp-data
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "44"
+binaryData:
+  tracts.parquet: {{ .Files.Get "files/mcp-data/tracts.parquet" | b64enc }}
+  coverage_scores.parquet: {{ .Files.Get "files/mcp-data/coverage_scores.parquet" | b64enc }}
+---
+# Deployed through OpenShift AI's MCP lifecycle operator so it appears under
+# AI hub -> MCP servers. The operator creates the Deployment and a Service
+# named after this resource.
+apiVersion: mcp.x-k8s.io/v1alpha1
+kind: MCPServer
+metadata:
+  name: {{ .Values.mcpServer.name }}
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: "45"
+    # The CRD only exists once the enable-components job (wave 10) has run.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  type: ClusterIP
-  selector:
-    app: cpl-coverage-mcp
-  ports:
-    - name: http
-      port: {{ .Values.mcpServer.port }}
-      targetPort: http
-      protocol: TCP
+  source:
+    type: ContainerImage
+    containerImage:
+      ref: {{ .Values.mcpServer.image }}
+  config:
+    port: {{ .Values.mcpServer.port }}
+    path: /mcp
+    env:
+      - name: MCP_PORT
+        value: {{ .Values.mcpServer.port | quote }}
+      - name: MODEL_NAME
+        value: {{ .Values.mcpServer.modelName | quote }}
+      # Internal service, so traffic never leaves the cluster and does not
+      # depend on the external route existing.
+      - name: MODEL_ENDPOINT
+        value: "https://{{ .Values.mcpServer.modelName }}-predictor.{{ .Values.namespace }}.svc:8443"
+      - name: DATA_DIR
+        value: /data
+    storage:
+      - path: /data
+        permissions: ReadOnly
+        source:
+          type: ConfigMap
+          configMap:
+            name: cpl-coverage-mcp-data
+  runtime:
+    replicas: {{ .Values.mcpServer.replicaCount }}
+    resources:
+      {{- toYaml .Values.mcpServer.resources | nindent 6 }}
+    security:
+      serviceAccountName: cpl-coverage-mcp
 {{- end }}
