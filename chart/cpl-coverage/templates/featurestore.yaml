@@ -7,6 +7,9 @@ metadata:
     feature-store-ui: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "25"
+    # The feast.dev CRD doesn't exist until the enable-feast job (wave 10) has
+    # run, so skip the up-front dry run that would otherwise fail the sync.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   feastProject: cpl_coverage
   feastProjectDir:

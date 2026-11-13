@@ -5,7 +5,13 @@ metadata:
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/hook: PostSync
+    # A Sync hook, not PostSync: the FeatureStore (wave 25) can't be created
+    # until this job has switched the Feast operator on and its CRD exists,
+    # and a PostSync hook never runs if the sync itself can't succeed. Argo CD
+    # waits for a Sync-hook Job to finish before moving to the next wave. Wave
+    # 10 is after this job's ServiceAccount and RBAC (wave 0).
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/sync-wave: "10"
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 3
@@ -27,10 +33,22 @@ spec:
               CURRENT=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.feastoperator.managementState}')
               if [ "$CURRENT" = "Managed" ]; then
                 echo "Feast operator already enabled."
-                exit 0
+              else
+                oc patch datasciencecluster default-dsc --type merge -p '{"spec":{"components":{"feastoperator":{"managementState":"Managed"}}}}'
+                echo "Feast operator enabled."
               fi
-              oc patch datasciencecluster default-dsc --type merge -p '{"spec":{"components":{"feastoperator":{"managementState":"Managed"}}}}'
-              echo "Feast operator enabled."
+
+              # Don't finish until the FeatureStore CRD is usable, so the next
+              # sync wave can create the FeatureStore.
+              for i in $(seq 1 60); do
+                if oc get crd featurestores.feast.dev >/dev/null 2>&1; then
+                  oc wait --for=condition=Established crd/featurestores.feast.dev --timeout=120s && exit 0
+                fi
+                echo "Waiting for the FeatureStore CRD... ($i/60)"
+                sleep 10
+              done
+              echo "ERROR: FeatureStore CRD did not appear within 10 minutes"
+              exit 1
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -49,6 +67,9 @@ rules:
   - apiGroups: ["datasciencecluster.opendatahub.io"]
     resources: ["datascienceclusters"]
     verbs: ["get", "patch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
