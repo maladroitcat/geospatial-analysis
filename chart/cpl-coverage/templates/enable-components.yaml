@@ -59,6 +59,15 @@ spec:
               set -e
               enable feastoperator featurestores.feast.dev
               enable mcplifecycleoperator mcpservers.mcp.x-k8s.io
+{{- if and .Values.mcpServer.enabled .Values.mcpServer.aiHub.enabled }}
+
+              # Turn on the dashboard's MCP catalog page (AI hub -> MCP servers).
+              # A merge patch sets only this key and leaves every other
+              # dashboard setting as it is.
+              oc patch odhdashboardconfig odh-dashboard-config -n {{ .Values.mcpServer.dashboard.namespace }} \
+                --type merge -p '{"spec":{"dashboardConfig":{"mcpCatalog":true}}}'
+              echo "Dashboard MCP catalog enabled."
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -95,3 +104,36 @@ subjects:
   - kind: ServiceAccount
     name: component-enabler
     namespace: {{ .Values.namespace }}
+{{- if and .Values.mcpServer.enabled .Values.mcpServer.aiHub.enabled }}
+---
+# Lets the job switch on the dashboard's MCP catalog page. Scoped to the one
+# dashboard config object, in the dashboard's namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-component-enabler
+  namespace: {{ .Values.mcpServer.dashboard.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["opendatahub.io"]
+    resources: ["odhdashboardconfigs"]
+    resourceNames: ["odh-dashboard-config"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "cpl-coverage.name" . }}-component-enabler
+  namespace: {{ .Values.mcpServer.dashboard.namespace }}
+  labels:
+    {{- include "cpl-coverage.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "cpl-coverage.name" . }}-component-enabler
+subjects:
+  - kind: ServiceAccount
+    name: component-enabler
+    namespace: {{ .Values.namespace }}
+{{- end }}

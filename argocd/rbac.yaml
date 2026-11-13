@@ -28,10 +28,11 @@ rules:
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["roles", "rolebindings"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # templates/ai-hub-mcp.yaml turns on the dashboard's MCP catalog page.
+  # The enable-components job turns on the dashboard's MCP catalog page. Argo
+  # CD must hold this itself to create the Role that grants it to the job.
   - apiGroups: ["opendatahub.io"]
     resources: ["odhdashboardconfigs"]
-    verbs: ["get", "list", "watch", "update", "patch"]
+    verbs: ["get", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
