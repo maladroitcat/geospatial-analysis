@@ -7,7 +7,7 @@ metadata:
     feature-store-ui: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "25"
-    # The feast.dev CRD doesn't exist until the enable-feast job (wave 10) has
+    # The feast.dev CRD doesn't exist until the enable-components job (wave 10) has
     # run, so skip the up-front dry run that would otherwise fail the sync.
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
@@ -25,3 +25,23 @@ spec:
     ui: {}
   authz:
     noAuth: true
+  # Feast registers a placeholder "__dummy" entity on every `feast apply`, for
+  # feature views that have no entity. Ours all have one, so it's only noise in
+  # the dashboard, which lists every registry entity. The operator's CronJob
+  # runs this inside the Feast pod; repeating it every few minutes covers pod
+  # restarts, which re-run `feast apply` and bring the placeholder back.
+  cronJob:
+    schedule: "*/5 * * * *"
+    suspend: false
+    concurrencyPolicy: Forbid
+    startingDeadlineSeconds: 120
+    successfulJobsHistoryLimit: 1
+    failedJobsHistoryLimit: 1
+    containerConfigs:
+      commands:
+        - >-
+          python -c "from feast import FeatureStore;
+          s = FeatureStore(repo_path='.');
+          found = '__dummy' in [e.name for e in s.registry.list_entities(s.project)];
+          found and s.registry.delete_entity('__dummy', s.project, commit=True);
+          print('Removed __dummy entity' if found else '__dummy entity not present')"
