@@ -5,8 +5,11 @@ metadata:
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
   annotations:
+    # Sync hook in wave 30: after the pipeline server (wave 20), before the
+    # pipelines workbench (wave 40) that reads the secret it creates. PostSync
+    # would wait on every other resource being healthy first.
     argocd.argoproj.io/sync-wave: "30"
-    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 10

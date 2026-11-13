@@ -5,7 +5,12 @@ metadata:
   labels:
     {{- include "cpl-coverage.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/hook: PostSync
+    # A Sync hook in wave 5 (after the bucket claim and this job's RBAC in
+    # wave 0) rather than PostSync: the workbenches in wave 40 can't start
+    # without cpl-s3, and PostSync hooks only run once every resource in the
+    # app is healthy, so one unrelated failing workload would block them.
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/sync-wave: "5"
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 3
@@ -24,6 +29,18 @@ spec:
             - /bin/sh
             - -c
             - |
+              # The bucket provisioner fills in the claim's secret shortly
+              # after the claim is created; wait for it.
+              for i in $(seq 1 60); do
+                ACCESS_KEY=$(oc get secret {{ .Values.s3.bucketName }} -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' 2>/dev/null)
+                [ -n "$ACCESS_KEY" ] && break
+                echo "Waiting for bucket credentials... ($i/60)"
+                sleep 5
+              done
+              if [ -z "$ACCESS_KEY" ]; then
+                echo "ERROR: bucket credentials not provisioned"
+                exit 1
+              fi
               ACCESS_KEY=$(oc get secret {{ .Values.s3.bucketName }} -o jsonpath='{.data.AWS_ACCESS_KEY_ID}')
               SECRET_KEY=$(oc get secret {{ .Values.s3.bucketName }} -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}')
 
