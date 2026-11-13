@@ -2,18 +2,13 @@ namespace: cpl-coverage
 
 git:
   repoURL: https://github.com/maladroitcat/geospatial-analysis.git
-  ref: geospatial_analysis
+  ref: geospatial_demo
 
 s3:
   bucketName: cpl-coverage-data
   bucketClass: openshift-storage.noobaa.io
 
 seed:
-  enabled: true
-
-# Third workbench holding the five pipeline steps as plain notebooks, for
-# running them by hand or assembling them into a pipeline with Elyra.
-labWorkbench:
   enabled: true
 
 mcpServer:

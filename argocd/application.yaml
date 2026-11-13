@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/maladroitcat/geospatial-analysis.git
-    targetRevision: geospatial_analysis
+    targetRevision: geospatial_demo
     path: chart/cpl-coverage
     helm:
       valueFiles:
@@ -21,6 +21,15 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+    # On a fresh cluster the GitOps operator grants Argo CD rights in the new
+    # namespace a few seconds after the namespace is created, so the first
+    # attempt can hit permission errors. Retrying lets the sync recover.
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
   # The RHOAI notebook controller decorates Notebook CRs at reconcile time
   # (oauth sidecar, trusted-CA mounts, Elyra/MLflow wiring). Without these
   # exclusions selfHeal reverts the injections on every sync, and the

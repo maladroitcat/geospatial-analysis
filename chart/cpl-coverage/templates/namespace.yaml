@@ -5,5 +5,9 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
     kubernetes.io/metadata.name: {{ .Values.namespace }}
+    # Tells the OpenShift GitOps operator to give the default Argo CD instance
+    # admin rights here; without it the controller can create the namespace
+    # but nothing inside it.
+    argocd.argoproj.io/managed-by: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
