@@ -1,0 +1,25 @@
+{{- if and .Values.mcpServer.enabled .Values.mcpServer.dashboard.register }}
+# Lists the CPL coverage MCP server in the OpenShift AI dashboard's
+# "MCP servers" tab (Gen AI studio), which reads this ConfigMap from the
+# dashboard's namespace. Each key is one server; the value is JSON with the
+# URL, transport and description.
+#
+# The ConfigMap is shared by every project on the cluster, so Argo CD applies
+# it server-side: it owns only the key below and leaves other entries alone.
+# Delete=false keeps the shared ConfigMap if this app is ever removed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: {{ .Values.mcpServer.dashboard.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "46"
+    argocd.argoproj.io/sync-options: ServerSideApply=true,Delete=false
+data:
+  cpl-coverage: |-
+    {{- dict
+        "url" (printf "http://cpl-coverage-mcp.%s.svc.cluster.local:%v/mcp" .Values.namespace .Values.mcpServer.port)
+        "transport" "streamable-http"
+        "description" .Values.mcpServer.dashboard.description
+      | toPrettyJson | nindent 4 }}
+{{- end }}

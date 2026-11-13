@@ -18,7 +18,17 @@ mcpServer:
   # model being called and the tract data used to build its inputs.
   modelImage: quay.io/rh-ee-vreynold/cpl-coverage-model:1.0.2
   modelName: cov-1
-  imagePullSecret: quay-push
+  # Both images are public on Quay, so no pull secret is needed.
+  imagePullSecret: ""
+  # Register the server in the OpenShift AI dashboard's "MCP servers" tab.
+  dashboard:
+    register: true
+    namespace: redhat-ods-applications
+    description: >-
+      Chicago Public Library coverage. Predict how much of each census tract a
+      new branch at given coordinates would reach on foot, by bike or by car;
+      summarize current coverage; find underserved tracts; and look up tracts
+      by name or ID.
   replicaCount: 1
   port: 8000
   resources:
