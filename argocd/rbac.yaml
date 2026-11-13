@@ -1,0 +1,43 @@
+# One-time, per-cluster grant for the default OpenShift GitOps Argo CD.
+# Apply it together with application.yaml:
+#
+#   oc apply -f argocd/rbac.yaml -f argocd/application.yaml
+#
+# The chart's MLflow storage setup (templates/mlflow-storage.yaml) creates a
+# bucket claim, a CA ConfigMap, and a Role/RoleBinding for its configure job in
+# OpenShift AI's namespace, redhat-ods-applications. Argo CD has no rights there
+# by default, and the chart can't grant them to itself. This Role covers only
+# those resource types in that one namespace, rather than labeling the whole
+# namespace as managed by Argo CD.
+#
+# Secrets are included because Kubernetes only lets Argo CD create a Role that
+# grants secret access if Argo CD holds that access itself.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-cpl-coverage-mlflow
+  namespace: redhat-ods-applications
+rules:
+  - apiGroups: ["objectbucket.io"]
+    resources: ["objectbucketclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-cpl-coverage-mlflow
+  namespace: redhat-ods-applications
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-cpl-coverage-mlflow
+subjects:
+  - kind: ServiceAccount
+    name: openshift-gitops-argocd-application-controller
+    namespace: openshift-gitops
