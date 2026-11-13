@@ -21,6 +21,14 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Only apply resources that differ from Git. Without this every sync
+      # re-applies the workbench Notebooks too, and each apply runs through
+      # the notebook controller, which re-emits its TLS env vars in a random
+      # order -- a new pod template, so the workbench restarts on any push.
+      - ApplyOutOfSyncOnly=true
+      # When a Notebook does change in Git, keep the fields listed under
+      # ignoreDifferences as they are live instead of rewriting them.
+      - RespectIgnoreDifferences=true
     # On a fresh cluster the GitOps operator grants Argo CD rights in the new
     # namespace a few seconds after the namespace is created, so the first
     # attempt can hit permission errors. Retrying lets the sync recover.
