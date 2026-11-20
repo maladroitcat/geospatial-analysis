@@ -9,7 +9,8 @@
 #
 # Backend store is SQLite on a PVC: this is a demo cluster, and MLflow's
 # experiment history doesn't need a database server. Artifacts (the big data)
-# live in object storage, not here.
+# live in object storage, not here. The operator mounts the storage PVC at
+# /mlflow, so the database file has to live under that path.
 apiVersion: mlflow.opendatahub.io/v1
 kind: MLflow
 metadata:
@@ -19,7 +20,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   serveArtifacts: true
-  backendStoreUri: sqlite:////var/lib/mlflow/mlflow.db
+  backendStoreUri: sqlite:////mlflow/mlflow.db
   storage:
     accessModes: ["ReadWriteOnce"]
     resources:
