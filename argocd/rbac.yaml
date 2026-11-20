@@ -44,8 +44,15 @@ roleRef:
   kind: Role
   name: argocd-cpl-coverage-mlflow
 subjects:
+  # The GitOps operator names the controller ServiceAccount after the Argo CD
+  # instance. Sandbox clusters have used both the default instance
+  # (openshift-gitops-...) and a custom one (infra-gitops-...), so bind both;
+  # a subject naming a ServiceAccount that doesn't exist is harmless.
   - kind: ServiceAccount
     name: openshift-gitops-argocd-application-controller
+    namespace: openshift-gitops
+  - kind: ServiceAccount
+    name: infra-gitops-argocd-application-controller
     namespace: openshift-gitops
 ---
 # templates/ai-hub-mcp.yaml adds the CPL entry to the user MCP catalog sources.
@@ -69,6 +76,13 @@ roleRef:
   kind: Role
   name: argocd-cpl-coverage-mcp-catalog
 subjects:
+  # The GitOps operator names the controller ServiceAccount after the Argo CD
+  # instance. Sandbox clusters have used both the default instance
+  # (openshift-gitops-...) and a custom one (infra-gitops-...), so bind both;
+  # a subject naming a ServiceAccount that doesn't exist is harmless.
   - kind: ServiceAccount
     name: openshift-gitops-argocd-application-controller
+    namespace: openshift-gitops
+  - kind: ServiceAccount
+    name: infra-gitops-argocd-application-controller
     namespace: openshift-gitops

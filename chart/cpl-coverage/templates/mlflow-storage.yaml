@@ -161,7 +161,10 @@ spec:
                 MLFLOW_S3_ENDPOINT_URL: {{ .Values.mlflow.s3EndpointUrl }}
               EOSECRET
 
-              oc patch mlflow {{ .Values.mlflow.instanceName }} --type=merge -p \
+              # Patch the shared instance in its own namespace -- without -n
+              # the CLI would target this job's namespace, where no MLflow
+              # object exists.
+              oc patch mlflow {{ .Values.mlflow.instanceName }} -n ${NS} --type=merge -p \
                 "{\"spec\":{\"artifactsDestination\":\"s3://${BUCKET}/mlflow-artifacts\",\"envFrom\":[{\"secretRef\":{\"name\":\"mlflow-models\"}}],\"caBundleConfigMap\":{\"name\":\"mlflow-s3-ca\"}}}"
 
               echo "MLflow artifacts now at s3://${BUCKET}/mlflow-artifacts"

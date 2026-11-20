@@ -1,0 +1,31 @@
+# One-time, per-cluster console configuration. Apply it together with the
+# other cluster-level files:
+#
+#   oc apply -f argocd/rbac.yaml -f argocd/console-plugins.yaml -f argocd/application.yaml
+#
+# The chart's S3 bucket (templates/obc.yaml) is a NooBaa ObjectBucketClaim
+# served by OpenShift Data Foundation. ODF installs the "odf-console" web
+# console plugin, but the plugin only loads once it is listed in the console
+# operator's Console resource. Until then the console hides the Storage ->
+# Data Foundation and Storage -> Object Storage entries, so cpl-coverage-data
+# exists but is invisible under the Storage tab.
+#
+# spec.plugins is replaced wholesale on apply, never merged, so this manifest
+# also lists the plugins that other operators on this cluster enable for
+# themselves. If another operator adds a plugin after this file is applied,
+# add its name here before re-applying, or that plugin loses its console UI.
+# A listed plugin whose ConsolePlugin resource does not exist is skipped
+# without degrading the console, so this file is safe to apply on a cluster
+# that is missing some of them.
+apiVersion: operator.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+spec:
+  plugins:
+    - networking-console-plugin  # network operator (OVN network console)
+    - monitoring-plugin          # cluster observability operator
+    - mce                        # multicluster engine
+    - acm                        # advanced cluster management
+    - lightspeed-console-plugin  # OpenShift Lightspeed
+    - odf-console                # OpenShift Data Foundation: shows the NooBaa bucket under Storage

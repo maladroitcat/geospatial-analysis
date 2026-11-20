@@ -1,0 +1,29 @@
+{{- if .Values.mlflow.configureS3Artifacts }}
+# The shared MLflow instance. The MLflow operator ships enabled but creates no
+# instance of its own, and templates/mlflow-storage.yaml patches THIS object at
+# runtime to repoint artifacts at object storage. The chart therefore creates
+# the base object and leaves the patched fields alone: application.yaml lists
+# them under ignoreDifferences, so Argo CD selfHeal never reverts the job's
+# changes. (The alternative -- managing the CR outside the chart like the old
+# cluster did -- is how this gap was missed on the last rebuild.)
+#
+# Backend store is SQLite on a PVC: this is a demo cluster, and MLflow's
+# experiment history doesn't need a database server. Artifacts (the big data)
+# live in object storage, not here.
+apiVersion: mlflow.opendatahub.io/v1
+kind: MLflow
+metadata:
+  name: {{ .Values.mlflow.instanceName }}
+  namespace: {{ .Values.mlflow.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  serveArtifacts: true
+  backendStoreUri: sqlite:////var/lib/mlflow/mlflow.db
+  storage:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 10Gi
+    # Omitted: uses the cluster's default storage class.
+{{- end }}

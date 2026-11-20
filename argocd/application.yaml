@@ -44,6 +44,16 @@ spec:
   # controller re-emits the TLS env vars in a fresh random order each time,
   # changing the pod template hash and rolling the workbench.
   ignoreDifferences:
+    # templates/mlflow-storage.yaml's PostSync job patches the shared MLflow
+    # instance (templates/mlflow-instance.yaml) at runtime to point artifacts
+    # at the generated bucket and inject its credentials. Without these
+    # exclusions selfHeal would revert the job's patches on every sync.
+    - group: mlflow.opendatahub.io
+      kind: MLflow
+      jsonPointers:
+        - /spec/artifactsDestination
+        - /spec/envFrom
+        - /spec/caBundleConfigMap
     - group: kubeflow.org
       kind: Notebook
       jqPathExpressions:
